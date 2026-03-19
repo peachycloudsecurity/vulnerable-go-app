@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vulnerable-exploit-pod
+spec:
+  containers:
+  - name: webapp
+    image: peachycloudsecurity/vulnerable-go-app:latest
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - name: host-root
+      mountPath: /mnt/host
+  volumes:
+  - name: host-root
+    hostPath:
+      path: /
+      type: Directory
